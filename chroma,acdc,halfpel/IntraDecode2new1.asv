@@ -1,0 +1,104 @@
+function Reconstructed_image = IntraDecode2new1(seq, sizes_full, factor)
+row_size=sizes_full(:,:,7);
+col_size=sizes_full(:,:,8);
+i = 1;
+dec_output = [];
+dec_output_inst=[];
+while i <= length(seq)
+    [dec_output_inst,loc] = ZeroRunDec(seq(i:end), 1000, 64);
+     dec_output = [dec_output dec_output_inst];
+     i = i + loc - 1;
+end
+% Decode
+len=(row_size*col_size);
+dec_output_Y = dec_output(1:len);
+dec_output_Cb = dec_output(len+1+1:ceil(5*len/4));
+dec_output_Cr = dec_output(ceil(5*len/4)+1:ceil(3*len/2));
+j=1;
+i=1;
+recon_Y=[];
+recon_Cb=[];
+recon_Cr=[];
+for r=1:8:row_size
+for  c=1:8:col_size
+        
+    %split decoder output in blocks of length 64
+        block_64_Y = dec_output_Y(j:j+63);
+        block_16_Cb = dec_output_Cb(i:i+15);
+        block_16_Cr = dec_output_Cr(i:i+15);
+        
+        
+        
+        %undo the zigzag scan
+        block_8x8_Y = DeZigZag8x8(block_64_Y);
+        block_8x8_Cb = DeZigZag8x8(block_16_Cb);
+        block_8x8_Cr = DeZigZag8x8(block_16_Cr);
+        
+        %dequantize each block
+        [ block_out_Y, block_out_Cb, block_out_Cr ] = DeQuant8x8( block_8x8_Y, block_8x8_Cb, block_8x8_Cr,factor );
+        
+        %undo DCT
+        block_IDCT_Y = IDCT8x8(block_out_Y);
+        block_IDCT_Cb = IDCT8x8(block_out_Cb);
+        block_IDCT_Cr = IDCT8x8(block_out_Cr);
+        
+        %concatenate blocks
+        recon_Y(r:r+7, c:c+7) = block_IDCT_Y;
+        recon_Cb(ceil(r/2):ceil(r/2)+3, ceil(c/2):ceil(c/2)+3) = block_IDCT_Cb;
+        recon_Cr(ceil(r/2):ceil(r/2)+3, ceil(c/2):ceil(c/2)+3) = block_IDCT_Cr;
+   
+    
+        j = j + 64;
+        i=i+16;
+%         %split decoder output in blocks
+%         block_Y = dec_output_Y(i:i+63);
+% %         block_Cb = dec_output_Cb(j:j+(sizes/2)^2-1);
+% %         block_Cr = dec_output_Cb(j:j+(sizes/2)^2-1);
+%       block_Cb = dec_output_Cb(i:i+63);
+%       block_Cr = dec_output_Cb(i:i+63);
+% 
+%         
+%         %undo the zigzag scan
+%         zigzag_Y = DeZigZag8x8(block_Y);
+%         zigzag_Cb = DeZigZag8x8(block_Cb);
+%         zigzag_Cr = DeZigZag8x8(block_Cr);
+%         
+%         %dequantize each block
+%         [block_out_Y,block_out_Cb,block_out_Cr] = DeQuant8x8(zigzag_Y,zigzag_Cb,zigzag_Cr, q_factor);
+% %         [block_out_Cb] = DeQuant(zigzag_Cb, q_factor, option);
+% %         [block_out_Cr] = DeQuant(zigzag_Cr, q_factor, option);
+% %         
+%         %undo DCT
+%         block_IDCT_Y = IDCT8x8(block_out_Y);
+%         block_IDCT_Cb = IDCT8x8(block_out_Cb);
+%         block_IDCT_Cr = IDCT8x8(block_out_Cr);
+%         
+%         %concatenate blocks
+%         
+%         %recon_Y(k:k+sizes-1,t:t+sizes-1) = block_IDCT_Y;
+%         recon_Y(k:k+7,t:t+7) = block_IDCT_Y;
+% %         recon_Cb(ceil(k/2):ceil((k/2))+(sizes/2)-1,ceil(t/2):(ceil(t/2))+(sizes/2)-1) = block_IDCT_Cb;
+% %         recon_Cr(ceil(k/2):ceil((k/2))+(sizes/2)-1,ceil(t/2):(ceil(t/2))+(sizes/2)-1) = block_IDCT_Cr;
+% %           recon_Cb(k:k+sizes-1,t:t+sizes-1) = block_IDCT_Cb;
+% %          recon_Cr(k:k+sizes-1,t:t+sizes-1) = block_IDCT_Cr;
+%         recon_Cb(k:k+7,t:t+7) = block_IDCT_Cb;
+%         recon_Cr(k:k+7,t:t+7) = block_IDCT_Cr;
+%         
+% 
+%         
+%        i = i + 64;
+% %        j=  j+ (sizes/2)^2;
+%        
+       
+       
+end
+end
+
+recon_Cb = chroma_up(recon_Cb);
+recon_Cr = chroma_up(recon_Cr);
+
+Reconstructed_image=[];
+Reconstructed_image(:,:,1)=recon_Y;
+Reconstructed_image(:,:,2)=recon_Cb;
+Reconstructed_image(:,:,3)=recon_Cr;
+end

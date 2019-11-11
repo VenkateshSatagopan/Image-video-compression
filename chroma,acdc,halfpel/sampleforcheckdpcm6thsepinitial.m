@@ -1,0 +1,170 @@
+clc;
+clear;
+names =['D:/IVC/NEW_IVC_labs_starting_point_FINAL/Final_w_subs/data/video/foreman0020.bmp'];
+names2=['D:/IVC/NEW_IVC_labs_starting_point_FINAL/Final_w_subs/data/video/foreman00'];
+cellnames = cellstr(names);
+cellnames2 = cellstr(names2);
+name=1;
+PSNR = zeros(6,1);
+b_rate = zeros(6,1);
+PSNR_av = zeros(6,1);
+b_rate_av = zeros(6,1);
+name=1;
+a=1.6
+for it = 1:1
+a=a-0.2;
+kk=1;
+% for it=1:1
+%a = a-0.2;  %scalar factor quantization
+% input_image_filename = strjoin(cellnames(name));
+% ORIGINAL_image = double( imread( input_image_filename)) ;
+%first_frame=double( imread( input_image_filename)) ;
+%ORIGINAL_image = double(imread('D:/IVC/NEW_IVC_labs_starting_point_FINAL/Final_w_subs/data/images/lena.tif'));
+ORIGINAL_image = double(imread('D:/IVC/NEW_IVC_labs_starting_point_FINAL/Final_w_subs/data/video/foreman0020.bmp'));
+first_frame=ORIGINAL_image;
+[first_frame_y, first_frame_cb, first_frame_cr] = ictRGB2YCbCr(first_frame);
+[recons_y, recons_cb, recons_cr,b_rate_curr] = Training(first_frame_y, first_frame_cb, first_frame_cr, a);
+recon_image_y(:,:,1) = recons_y;
+recon_image_cb(:,:,1) = recons_cb;
+recon_image_cr(:,:,1) = recons_cr;
+Reconstructed_image=[];
+Reconstructed_image(:,:,1)=recons_y;
+Reconstructed_image(:,:,2)=recons_cb;
+Reconstructed_image(:,:,3)=recons_cr;
+[recons_r, recons_g, recons_b] = ictYCbCr2RGB(Reconstructed_image);
+Reconstructed_imagenew=[];
+Reconstructed_imagenew(:,:,1) = recons_r;
+Reconstructed_imagenew(:,:,2) = recons_g;
+Reconstructed_imagenew(:,:,3) = recons_b;
+MSE=calcMSE(ORIGINAL_image,Reconstructed_imagenew);
+PSNR(kk,it) = calcPSNR(8,MSE);
+%b_rate_curr = 8*(length(bytestream_ac)+length(bytestream_dc))/(size(first_frame,1) *size(first_frame,2));
+b_rate(kk,it) = b_rate_curr;
+figure;
+imshow(ORIGINAL_image/255);
+figure;
+imshow(Reconstructed_imagenew/255);
+end
+%i=2;
+%Newly added
+
+% for tt = 21:40
+% input_image_filename = [strjoin(cellnames2), num2str(tt), '.bmp'];
+% ORIGINAL_image = double( imread( input_image_filename ) ) ;
+% [ORIGINAL_image_Y, ORIGINAL_image_Cb, ORIGINAL_image_Cr] = ictRGB2YCbCr(ORIGINAL_image);
+% % curr_frame = double(imread(strcat(test_seqs{1}, '/', dirData(i).name)));
+% % [curr_frame_y, curr_frame_cb, curr_frame_cr] = ictRGB2YCbCr(curr_frame(:,:,1), curr_frame(:,:,2), curr_frame(:,:,3));
+% curr_frame_y=ORIGINAL_image_Y;
+% curr_frame_cb=ORIGINAL_image_Cb;
+% curr_frame_cr=ORIGINAL_image_Cr;
+% % Encode
+% [ac_seq, dc_seq, pos, sizes, mv] = InterEncodeImage(recon_image_y(:,:,i-1), recon_image_cb(:,:,i-1), recon_image_cr(:,:,i-1), curr_frame_y, curr_frame_cb, curr_frame_cr, 1);
+% % build huffman
+% min_val = -500;
+% max_val = 1000;
+% extended_z = min_val:max_val;
+% min_val_s = 3;
+% max_val_s = 6;
+% extended_s_z = min_val_s:max_val_s;
+% min_val_p = 0;
+% max_val_p = max(size(first_frame))/8-1;
+% extended_p_z = min_val_p:max_val_p;
+% min_val_mv = -23;
+% max_val_mv = 23;
+% extended_mv_z = min_val_mv:max_val_mv;
+% occur_ac = histc(ac_seq, extended_z);
+% pmf_ac = occur_ac/sum(occur_ac);
+% [ BinaryTree_ac, HuffCode_ac, BinCode_ac, Codelengths_ac] = buildHuffman( pmf_ac );
+% bytestream_ac = enc_huffman_new(ac_seq-min_val+1, BinCode_ac, Codelengths_ac);
+% occur_dc = histc(dc_seq, extended_z);
+% pmf_dc = occur_dc/sum(occur_dc);
+% [ BinaryTree_dc, HuffCode_dc, BinCode_dc, Codelengths_dc] = buildHuffman( pmf_dc );
+% bytestream_dc = enc_huffman_new(dc_seq-min_val+1, BinCode_dc, Codelengths_dc);
+% occur_sizes = histc(log2(sizes), extended_s_z);
+% pmf_sizes = occur_sizes/sum(occur_sizes);
+% [ BinaryTree_sizes, HuffCode_sizes, BinCode_sizes, Codelengths_sizes] = buildHuffman( pmf_sizes );
+% bytestream_sizes = enc_huffman_new(log2(sizes)-min_val_s+1, BinCode_sizes, Codelengths_sizes);
+% pos_vect = (pos(:)-1)/8;
+% occur_pos = histc(pos_vect, extended_p_z);
+% pmf_pos = occur_pos/sum(occur_pos);
+% [ BinaryTree_pos, HuffCode_pos, BinCode_pos, Codelengths_pos] = buildHuffman( pmf_pos );
+% bytestream_pos = enc_huffman_new(pos_vect+1, BinCode_pos, Codelengths_pos);
+% mv4 = 4*mv(:);
+% occur_mv = histc(mv4, extended_mv_z);
+% pmf_mv = occur_mv/sum(occur_mv);
+% [ BinaryTree_mv, HuffCode_mv, BinCode_mv, Codelengths_mv] = buildHuffman( pmf_mv );
+% bytestream_mv = enc_huffman_new(mv4-min_val_mv+1, BinCode_mv, Codelengths_mv);
+% 
+% 
+%     disp(['err_bit_rate=', num2str(length(bytestream_ac)*8/size(first_frame,1) /size(first_frame,2))]);
+%     disp(['dc_bit_rate=', num2str(length(bytestream_dc)*8/size(first_frame,1) /size(first_frame,2))]);
+%     disp(['mv_bit_rate=', num2str(length(bytestream_mv)*8/size(first_frame,1) /size(first_frame,2))]);
+%     disp(['pos_bit_rate=', num2str(length(bytestream_pos)*8/size(first_frame,1) /size(first_frame,2))]);
+%     disp(['size_bit_rate=', num2str(length(bytestream_sizes)*8/size(first_frame,1) /size(first_frame,2))]);
+% % Decode
+% output_ac = dec_huffman_new(bytestream_ac, BinaryTree_ac, max(size(ac_seq)));
+% output_ac = output_ac + min_val - 1;
+% 
+% output_dc = dec_huffman_new(bytestream_dc, BinaryTree_dc, max(size(dc_seq)));
+% output_dc = output_dc + min_val - 1;
+% 
+% output_sizes = dec_huffman_new(bytestream_sizes, BinaryTree_sizes, max(size(sizes)));
+% output_sizes = 2.^(output_sizes+min_val_s-1);
+% 
+% output_pos = dec_huffman_new(bytestream_pos, BinaryTree_pos, max(size(pos(:))));
+% output_pos = (output_pos - 1)*8 + 1;
+% pos_dec = reshape(output_pos, size(pos));
+% 
+% output_mv = dec_huffman_new(bytestream_mv, BinaryTree_mv, max(size(mv(:))));
+% output_mv = (output_mv + min_val_mv - 1)/4;
+% mv_dec = reshape(output_mv, size(mv));
+% 
+% 
+% output_ac = ac_seq;
+% output_dc = dc_seq;
+% pos_dec = pos;
+% output_sizes = sizes;
+% mv_dec = mv;
+% 
+% 
+% [recons_y, recons_cb, recons_cr] = InterDecode(recon_image_y(:,:,i-1), recon_image_cb(:,:,i-1), recon_image_cr(:,:,i-1), output_ac, output_dc, pos_dec, output_sizes, mv_dec, 1);
+% 
+% recon_image_y(:,:,i) = recons_y;
+% recon_image_cb(:,:,i) = recons_cb;
+% recon_image_cr(:,:,i) = recons_cr;
+% 
+% Reconstructed_image=[];
+% Reconstructed_image(:,:,1)=recons_y;
+% Reconstructed_image(:,:,2)=recons_cb;
+% Reconstructed_image(:,:,3)=recons_cr;
+% [recons_r, recons_g, recons_b] = ictYCbCr2RGB(Reconstructed_image);
+% 
+% %[recons_r, recons_g, recons_b] = ictYCbCr2RGB(recons_y, recons_cb, recons_cr);
+% recons_image_RGB(:,:,1) = recons_r;
+% recons_image_RGB(:,:,2) = recons_g;
+% recons_image_RGB(:,:,3) = recons_b;
+% Reconstructed_imagenew=[];
+% Reconstructed_imagenew(:,:,1) = recons_r;
+% Reconstructed_imagenew(:,:,2) = recons_g;
+% Reconstructed_imagenew(:,:,3) = recons_b;
+% 
+% 
+% % figure;
+% % imshow(Reconstructed_imagenew/255);
+% 
+% MSE=calcMSE(ORIGINAL_image,Reconstructed_imagenew);
+% kk=kk+1;
+% PSNR(kk,it)=calcPSNR(8,MSE)
+% b_rate_curr = 8*(length(bytestream_ac)+length(bytestream_dc)+length(bytestream_mv))/(size(first_frame,1) *size(first_frame,2));
+% b_rate(kk,it) = b_rate_curr;
+% i=i+1;
+% end
+% psnr_av(it,name) = mean(PSNR(:,it))
+% b_rate_av(it,name) = mean(b_rate(:,it))
+% kk=1;
+% end
+% end
+% plot(b_rate_av,psnr_av);
+% title('Graph between bitrate and PSNR')
+% xlabel('bitrate');
+% ylabel('PSNR')

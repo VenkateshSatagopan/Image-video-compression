@@ -1,0 +1,143 @@
+clc;
+clear;
+%%
+names =['D:/IVC/NEW_IVC_labs_starting_point_FINAL/Final_w_subs/data/video/foreman0020.bmp'];
+names2=['D:/IVC/NEW_IVC_labs_starting_point_FINAL/Final_w_subs/data/video/foreman00'];
+%%
+cellnames = cellstr(names);
+cellnames2 = cellstr(names2);
+name=1;
+PSNR = zeros(21,1);
+b_rate = zeros(21,1);
+PSNR_av = zeros(6,1);
+b_rate_av = zeros(6,1);
+%%
+for name = 1:1
+a = 1.6;
+kk=1;
+for it = 1:6
+a=a-0.2
+input_image_filename = strjoin(cellnames(name));
+ORIGINAL_image = double( imread( input_image_filename)) ;
+first_frame=double( imread( input_image_filename)) ;
+[first_frame_y, first_frame_cb, first_frame_cr] = ictRGB2YCbCr(first_frame);
+[recons_y, recons_cb, recons_cr,b_rate_curr] = Training(first_frame_y, first_frame_cb, first_frame_cr, a);
+recon_image_y(:,:,1) = recons_y;
+recon_image_cb(:,:,1) = recons_cb;
+recon_image_cr(:,:,1) = recons_cr;
+Reconstructed_image=[];
+Reconstructed_image(:,:,1)=recons_y;
+Reconstructed_image(:,:,2)=recons_cb;
+Reconstructed_image(:,:,3)=recons_cr;
+[recons_r, recons_g, recons_b] = ictYCbCr2RGB(Reconstructed_image);
+Reconstructed_imagenew=[];
+Reconstructed_imagenew(:,:,1) = recons_r;
+Reconstructed_imagenew(:,:,2) = recons_g;
+Reconstructed_imagenew(:,:,3) = recons_b;
+MSE=calcMSE(ORIGINAL_image,Reconstructed_imagenew);
+PSNR(kk,it) = calcPSNR(8,MSE);
+%b_rate_curr = 8*(length(bytestream_ac)+length(bytestream_dc))/(size(first_frame,1) *size(first_frame,2));
+b_rate(kk,it) = b_rate_curr;
+figure;
+imshow(ORIGINAL_image/255);
+figure;
+imshow(Reconstructed_imagenew/255);
+end
+%Newly added
+ss1=size(ORIGINAL_image,1);
+ss2=size(ORIGINAL_image,2);
+[RECONS_image_Y(:,:,1),RECONS_image_Cb(:,:,1),RECONS_image_Cr(:,:,1)]=ictRGB2YCbCr(Reconstructed_imagenew);
+ for tt = 21:40
+input_image_filename = [strjoin(cellnames2), num2str(tt), '.bmp'];
+ORIGINAL_image = double( imread( input_image_filename ) ) ;
+[ORIGINAL_image_Y, ORIGINAL_image_Cb, ORIGINAL_image_Cr] = ictRGB2YCbCr(ORIGINAL_image);
+%Motion Estimaton Block
+CONCAT_im_Y = [];
+CONCAT_im_Cb = [];
+CONCAT_im_Cr = [];
+M = [];
+%Error   
+ for i = 1:8:ss1
+ for j = 1:8:ss2
+%             
+ssd = inf;
+for t1 = -4:4
+for t2 = -4:4
+if(i+t1 > 0 && i+7+t1 <= ss1 && j+t2 > 0 && j+7+t2 <= ss2)                        
+ reference_block = RECONS_image_Y(i+t1:i+7+t1, j+t2:j+7+t2);
+ ssd_curr = sum(sum((ORIGINAL_image_Y(i:i+7, j:j+7) - reference_block).^2));
+%                                                   
+if(ssd_curr < ssd)
+motion_vect = [t1 t2];
+ssd = ssd_curr;
+good_block = reference_block;
+end
+end
+end
+end
+M = [M; motion_vect];
+r = motion_vect(1);
+c = motion_vect(2);
+block_curr_Y = RECONS_image_Y(i+r:i+7+r, j+c:j+7+c);
+block_curr_Cb = RECONS_image_Cb(i+r:i+7+r, j+c:j+7+c);
+block_curr_Cr = RECONS_image_Cr(i+r:i+7+r, j+c:j+7+c);
+%this is the image obtained by shifting blocks with the motion
+%vectors
+CONCAT_im_Y(i:i+7, j:j+7) = block_curr_Y;
+CONCAT_im_Cb(i:i+7, j:j+7) = block_curr_Cb;            
+CONCAT_im_Cr(i:i+7, j:j+7) = block_curr_Cr;
+end
+end
+err_Y = ORIGINAL_image_Y(:,:) - CONCAT_im_Y(:, :);
+err_Cb = ORIGINAL_image_Cb(:,:) - CONCAT_im_Cb(:, :);
+err_Cr = ORIGINAL_image_Cr(:,:) - CONCAT_im_Cr(:, :);
+err_final(:,:,1)=err_Y;
+err_final(:,:,2)=err_Cb;
+err_final(:,:,3)=err_Cr;
+rowsize=size(err_final,1);
+columnsize=size(err_final,2);
+output_datanew=[];
+[output_datanew(:,:,1),output_datanew(:,:,2),output_datanew(:,:,3),b_rate_curr]=InterEncodewithdecode_image(err_final(:,:,1),err_final(:,:,2),err_final(:,:,3),a,M);
+
+%Motion Compensation part
+
+for i = 1:8:ss1
+for j = 1:8:ss2
+r = M(count,1); 
+c = M(count,2);
+count=count+1;
+block_curr_Y = RECONS_image_Y(i+r:i+7+r, j+c:j+7+c);
+block_curr_Cb = RECONS_image_Cb(i+r:i+7+r, j+c:j+7+c);
+block_curr_Cr = RECONS_image_Cr(i+r:i+7+r, j+c:j+7+c);
+Reconstructed_image(i:i+7,j:j+7,1)=block_curr_Y+output_datanew(i:i+7,j:j+7,1);
+Reconstructed_image(i:i+7,j:j+7,2)=block_curr_Cb+output_datanew(i:i+7,j:j+7,2);
+Reconstructed_image(i:i+7,j:j+7,3)=block_curr_Cr+output_datanew(i:i+7,j:j+7,3);
+end
+end
+RECONS_image_Y=Reconstructed_image(:,:,1);
+RECONS_image_Cb=Reconstructed_image(:,:,2);
+RECONS_image_Cr=Reconstructed_image(:,:,3);
+[RR,RG,RB]=ictYCbCr2RGB(Reconstructed_image);
+
+Reconstructed_imagenew=[];
+Reconstructed_imagenew(:,:,1)=RR;
+Reconstructed_imagenew(:,:,2)=RG;
+Reconstructed_imagenew(:,:,3)=RB;
+MSE=calcMSE(ORIGINAL_image,Reconstructed_imagenew);
+kk=kk+1;
+PSNR(kk,it)=calcPSNR(8,MSE)
+b_rate(kk,it) = b_rate_curr;
+ end
+ disp('Mean PSNR and bit rate of factor=');
+disp(it);
+disp('\n');
+psnr_av(it,name) = mean(PSNR(:,it))
+b_rate_av(it,name) = mean(b_rate(:,it))
+kk=1;
+end
+end
+plot(b_rate_av,psnr_av);
+title('Graph between bitrate and PSNR')
+xlabel('bitrate');
+ylabel('PSNR');
+
